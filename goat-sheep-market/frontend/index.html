@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goat & Sheep Market</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body class="bg-gray-50 text-gray-800 transition-colors duration-300">
+
+  <!-- Toast Notification Module -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2"></div>
+
+  <!-- Loading Animation screen -->
+  <div id="loader-overlay" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center hidden">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl flex flex-col items-center">
+      <div class="loader-spinner animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
+      <p id="loader-text" class="text-sm font-semibold text-gray-700 dark:text-gray-200">Loading details...</p>
+    </div>
+  </div>
+
+  <!-- Navigation bar wrapper -->
+  <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-[1000] transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <a href="#" onclick="showSection('home')" class="flex items-center gap-2">
+            <span class="text-2xl">🐐</span>
+            <span id="nav-brand" class="font-extrabold text-xl text-emerald-600 dark:text-emerald-400 tracking-tight">Goat & Sheep Market</span>
+          </a>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button onclick="showSection('home')" id="nav-home" class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 px-3 py-2 rounded-md font-medium">Home</button>
+          <button onclick="showSection('search-section')" id="nav-browse" class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 px-3 py-2 rounded-md font-medium">Browse Listings</button>
+          <button onclick="showSection('auth-section')" id="nav-auth" class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 px-3 py-2 rounded-md font-medium">Login / Register</button>
+          <button onclick="showSection('dashboard-section')" id="nav-dashboard" class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 px-3 py-2 rounded-md font-medium hidden">Dashboard</button>
+          <button onclick="handleLogout()" id="nav-logout" class="text-gray-600 dark:text-gray-300 hover:text-red-600 px-3 py-2 rounded-md font-medium hidden">Logout</button>
+          
+          <!-- Control Buttons (Theme + Lang) -->
+          <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300" title="Toggle Theme">🌓</button>
+          <button onclick="toggleLanguage()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-2 rounded-lg font-bold transition" id="lang-switch-btn">తెలుగు</button>
+        </div>
+
+        <!-- Mobile hamburger menu button -->
+        <div class="flex items-center md:hidden gap-2">
+          <button onclick="toggleTheme()" class="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">🌓</button>
+          <button onclick="toggleLanguage()" class="text-xs bg-emerald-100 text-emerald-800 p-1.5 rounded-lg font-bold" id="lang-switch-btn-mobile">తెలుగు</button>
+          <button onclick="toggleMobileMenu()" class="text-gray-600 dark:text-gray-300 focus:outline-none">
+            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Menu dropdown list -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white dark:bg-gray-950 px-2 pt-2 pb-4 space-y-1 shadow-lg border-b border-gray-200 dark:border-gray-800">
+      <button onclick="showSection('home')" class="block w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300" id="m-nav-home">Home</button>
+      <button onclick="showSection('search-section')" class="block w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300" id="m-nav-browse">Browse Listings</button>
+      <button onclick="showSection('auth-section')" class="block w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300" id="m-nav-auth">Login / Register</button>
+      <button onclick="showSection('dashboard-section')" class="block w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300 hidden" id="m-nav-dashboard">Dashboard</button>
+      <button onclick="handleLogout()" class="block w-full text-left px-3 py-2 text-red-600 hidden" id="m-nav-logout">Logout</button>
+    </div>
+  </nav>
+
+  <!-- Banner alerting users of current execution framework mode -->
+  <div id="demo-mode-alert" class="bg-amber-500 text-white font-medium py-1.5 px-4 text-center text-xs flex justify-center items-center gap-2">
+    <span>⚠️ Running in static offline demo mode. All changes save to browser storage. Start backend server to query real database.</span>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ==================== HOME SECTION ==================== -->
+    <section id="home-section" class="space-y-12">
+      <!-- Hero Banner -->
+      <div class="relative bg-emerald-900 rounded-3xl overflow-hidden shadow-2xl py-16 px-8 sm:px-12 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-8 text-white">
+        <div class="space-y-6 max-w-xl">
+          <span class="bg-emerald-800 text-emerald-200 text-xs px-3 py-1.5 rounded-full font-bold uppercase tracking-wider" id="hero-tag">Direct Farm Marketplace</span>
+          <h1 id="hero-title" class="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight">Find the Best Livestock Near You</h1>
+          <p id="hero-subtitle" class="text-emerald-100 text-lg">Direct trade between local farmers and buyers. Fast, secure, easy, and transparent negotiations.</p>
+          <div class="flex flex-wrap gap-4 justify-center sm:justify-start">
+            <button onclick="showSection('search-section')" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold px-6 py-3 rounded-xl transition shadow-lg" id="hero-btn-browse">Browse Livestock</button>
+            <button onclick="showSection('dashboard-section')" class="bg-emerald-800/80 hover:bg-emerald-800 border border-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition" id="hero-btn-sell">Start Selling</button>
+          </div>
+        </div>
+        <div class="w-full max-w-sm rounded-2xl overflow-hidden shadow-xl aspect-video sm:aspect-square bg-emerald-800 flex items-center justify-center text-8xl p-8 border border-emerald-700 select-none">
+          🐐🐏
+        </div>
+      </div>
+
+      <!-- Quick Statistics Section -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-800 text-center">
+          <p class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400" id="stat-active-count">120+</p>
+          <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1" id="stat-active-lbl">Active Listings</p>
+        </div>
+        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-800 text-center">
+          <p class="text-3xl font-extrabold text-amber-500" id="stat-sold-count">480+</p>
+          <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1" id="stat-sold-lbl">Animals Sold</p>
+        </div>
+        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-800 text-center">
+          <p class="text-3xl font-extrabold text-blue-600 dark:text-blue-400" id="stat-district-count">15+</p>
+          <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1" id="stat-district-lbl">Districts Covered</p>
+        </div>
+        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-800 text-center">
+          <p class="text-3xl font-extrabold text-purple-600 dark:text-purple-400" id="stat-users-count">1,200+</p>
+          <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1" id="stat-users-lbl">Registered Farmers</p>
+        </div>
+      </div>
+
+      <!-- All Animal Listings Header -->
+      <div class="space-y-6">
+        <div class="flex justify-between items-center">
+          <h2 id="home-latest-title" class="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-white">All Listings</h2>
+          <a href="#" onclick="showSection('search-section')" id="home-view-all" class="text-emerald-600 font-bold hover:underline">View All →</a>
+        </div>
+        <div id="latest-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Populated dynamically (Displays all goats and sheep) -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SEARCH & BROWSE ==================== -->
+    <section id="search-section" class="space-y-8 hidden">
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-800">
+        <h2 id="search-title" class="text-xl font-bold mb-4 dark:text-white">Filter Livestock Search</h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Text Search -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-search-text">Search Text</label>
+            <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Breed, location..." class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-emerald-500">
+          </div>
+          <!-- Type Filter -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-filter-type">Animal Type</label>
+            <select id="filter-type" onchange="applyFilters()" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-emerald-500">
+              <option value="" id="opt-all-types">All Types</option>
+              <option value="Goat" id="opt-goat">Goat</option>
+              <option value="Sheep" id="opt-sheep">Sheep</option>
+            </select>
+          </div>
+          <!-- District Selector -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-filter-district">District</label>
+            <input type="text" id="filter-district" oninput="applyFilters()" placeholder="e.g. Mahbubnagar" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-emerald-500">
+          </div>
+          <!-- Breed Selector -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-filter-breed">Breed</label>
+            <input type="text" id="filter-breed" oninput="applyFilters()" placeholder="e.g. Nellore" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-emerald-500">
+          </div>
+          <!-- Sort Criteria -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-filter-sort">Sort By</label>
+            <select id="filter-sort" onchange="applyFilters()" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-emerald-500">
+              <option value="latest" id="opt-sort-latest">Latest Uploads</option>
+              <option value="low-price" id="opt-sort-low">Lowest Price</option>
+              <option value="high-price" id="opt-sort-high">Highest Price</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="browse-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Render listings -->
+      </div>
+    </section>
+
+    <!-- ==================== UNIFIED AUTH SECTION (Login & Signup Toggle) ==================== -->
+    <section id="auth-section" class="max-w-md mx-auto hidden bg-white dark:bg-gray-900 p-8 rounded-2xl shadow border border-gray-100 dark:border-gray-800">
+      
+      <!-- Toggle Tabs -->
+      <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        <button id="auth-tab-login" onclick="toggleAuthForm('login')" class="w-1/2 pb-3 font-bold border-b-2 border-emerald-500 text-emerald-600 text-center">Login</button>
+        <button id="auth-tab-register" onclick="toggleAuthForm('register')" class="w-1/2 pb-3 font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 text-center">Register / Signup</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <h2 id="login-title" class="text-xl font-extrabold text-center text-gray-900 dark:text-white hidden">Login to Your Account</h2>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-login-phone">Phone Number</label>
+          <input type="text" id="login-phone" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-login-pass">Password</label>
+          <input type="password" id="login-password" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition" id="btn-submit-login">Sign In</button>
+        <p class="text-sm text-center mt-4 text-gray-500">
+          <span id="login-footer-text">Don't have an account?</span> 
+          <a href="#" onclick="toggleAuthForm('register')" class="text-emerald-600 font-bold hover:underline">Register / Signup</a>
+        </p>
+      </form>
+
+      <!-- REGISTER / SIGNUP FORM -->
+      <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="space-y-4 hidden">
+        <h2 id="register-title" class="text-xl font-extrabold text-center text-gray-900 dark:text-white hidden">Create Farmer Account</h2>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-reg-name">Full Name</label>
+          <input type="text" id="register-name" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-reg-phone">Phone Number</label>
+          <input type="text" id="register-phone" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-reg-pass">Password</label>
+          <input type="password" id="register-password" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-reg-role">Role Type</label>
+          <select id="register-role" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+            <option value="seller">Seller / Farmer (రైతు)</option>
+            <option value="buyer">Buyer / Client (కొనుగోలుదారు)</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition" id="btn-submit-reg">Create Account</button>
+        <p class="text-sm text-center mt-4 text-gray-500">
+          <span id="reg-footer-text">Already have an account?</span> 
+          <a href="#" onclick="toggleAuthForm('login')" class="text-emerald-600 font-bold hover:underline">Log in</a>
+        </p>
+      </form>
+    </section>
+
+    <!-- ==================== SELLER DASHBOARD ==================== -->
+    <section id="dashboard-section" class="space-y-8 hidden">
+      <div class="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 id="dash-welcome" class="text-3xl font-extrabold tracking-tight dark:text-white">Seller Dashboard</h1>
+          <p id="dash-desc" class="text-gray-500 mt-1">Manage your active livestock listings and sales profiles.</p>
+        </div>
+        <button onclick="openListingForm('create')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-3 rounded-xl transition shadow flex items-center gap-2">
+          <span>➕</span> <span id="dash-btn-upload">Upload Animal</span>
+        </button>
+      </div>
+
+      <!-- Seller Profile Details Card -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow">
+        <h3 id="dash-profile-title" class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Farmer Profile Card</h3>
+        <div class="flex items-center gap-4">
+          <div class="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 p-4 rounded-full text-2xl font-bold">
+            👨‍🌾
+          </div>
+          <div>
+            <h4 class="text-xl font-bold dark:text-white" id="profile-card-name">Farmer Name</h4>
+            <p class="text-sm text-gray-500" id="profile-card-phone">Phone: 9876543210</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 id="dash-listings-header" class="text-xl font-extrabold dark:text-white mb-4">My Livestock Listings</h2>
+        <div id="seller-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Render user cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== UPLOAD & EDIT FORMS ==================== -->
+    <section id="listing-form-section" class="max-w-3xl mx-auto hidden bg-white dark:bg-gray-900 p-8 rounded-2xl shadow border border-gray-100 dark:border-gray-800">
+      <h2 id="form-section-title" class="text-2xl font-extrabold tracking-tight dark:text-white mb-6">Upload Animal Details</h2>
+      
+      <form id="listing-upload-form" onsubmit="handleListingSubmit(event)" class="space-y-6">
+        <input type="hidden" id="form-action-mode" value="create">
+        <input type="hidden" id="form-edit-id" value="">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Animal Type -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-type">Animal Type *</label>
+            <select id="form-type" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+              <option value="Goat">Goat (మేక)</option>
+              <option value="Sheep">Sheep (గొర్రె)</option>
+            </select>
+          </div>
+          <!-- Breed -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-breed">Breed *</label>
+            <input type="text" id="form-breed" required placeholder="e.g. Nellore" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Age & Unit -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-age">Age *</label>
+            <div class="flex gap-2">
+              <input type="number" id="form-age" required min="1" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+              <select id="form-age-unit" required class="px-2 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+                <option value="Months">Months</option>
+                <option value="Years">Years</option>
+              </select>
+            </div>
+          </div>
+          <!-- Weight (KG) -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-weight">Weight (KG) *</label>
+            <input type="number" id="form-weight" required min="1" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+          <!-- Status -->
+          <div id="form-status-wrapper" class="hidden">
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-status">Status *</label>
+            <select id="form-status" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+              <option value="Available">Available</option>
+              <option value="Sold">Sold</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- District -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-district">District *</label>
+            <input type="text" id="form-district" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+          <!-- Village -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-village">Village *</label>
+            <input type="text" id="form-village" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+        </div>
+
+        <!-- Price Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-1" id="lbl-form-original">Original Price *</label>
+            <input type="number" id="form-original-price" required min="100" oninput="calculateOfferPrice()" class="w-full px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-1" id="lbl-form-discount">Discount %</label>
+            <input type="number" id="form-discount" min="0" max="100" value="0" oninput="calculateOfferPrice()" class="w-full px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-1" id="lbl-form-offer">Offer Price (Auto calculated)</label>
+            <input type="text" id="form-offer-price" readonly class="w-full px-3 py-2 rounded-lg bg-emerald-100 dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 font-bold focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Primary Phone -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-phone1">Phone Number *</label>
+            <input type="text" id="form-phone" required class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+          <!-- Secondary Phone -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-phone2">Alternate Phone</label>
+            <input type="text" id="form-alternate-phone" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500">
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1" id="lbl-form-desc">Description</label>
+          <textarea id="form-description" rows="3" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-emerald-500"></textarea>
+        </div>
+
+        <!-- Interactive Location Map -->
+        <div class="space-y-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500" id="lbl-form-map">Geo Map Location (Click map to pin current location)</label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="fetchDeviceLocation()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition" id="form-btn-current-loc">Use Current GPS Location</button>
+            <span class="text-xs text-gray-400 mt-1" id="form-gps-status">Manual setting active</span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <input type="text" id="form-lat" required readonly class="px-2 py-1.5 rounded bg-gray-100 text-xs border">
+            <input type="text" id="form-lng" required readonly class="px-2 py-1.5 rounded bg-gray-100 text-xs border">
+          </div>
+          <div id="form-map-container" class="h-64 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"></div>
+        </div>
+
+        <!-- Upload Images Section -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-500" id="lbl-form-images">Upload Media Images (Maximum 4 allowed - JPG/PNG/WEBP)</label>
+          <input type="file" id="form-image-input" multiple accept="image/*" onchange="previewImages()" class="w-full text-xs text-gray-500">
+          <div id="form-image-previews" class="grid grid-cols-4 gap-4 mt-2">
+            <!-- Dynamic thumbnails populated -->
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-4">
+          <button type="button" onclick="showSection('dashboard-section')" class="px-6 py-2 border border-gray-200 text-gray-500 rounded-lg" id="form-btn-cancel">Cancel</button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-lg" id="form-btn-save">Save Listing</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ==================== 404 PAGE ==================== -->
+    <section id="not-found-section" class="text-center py-24 space-y-6 hidden">
+      <p class="text-8xl">🏜️</p>
+      <h1 class="text-4xl font-extrabold dark:text-white" id="not-found-title">Page Not Found</h1>
+      <p class="text-gray-500" id="not-found-desc">We are unable to locate the page you requested.</p>
+      <button onclick="showSection('home')" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-lg" id="not-found-btn">Back to Home</button>
+    </section>
+
+  </main>
+
+  <!-- ==================== DETAILS DIALOG MODAL ==================== -->
+  <div id="listing-details-modal" class="fixed inset-0 z-[2000] hidden flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
+    <div class="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col">
+      <button onclick="closeDetailsModal()" class="absolute top-4 right-4 bg-black/50 text-white hover:bg-black/70 p-2 rounded-full z-10">✕</button>
+      
+      <div class="overflow-y-auto p-6 space-y-6" id="modal-scrollable-content">
+        <!-- Media Slider -->
+        <div class="relative h-64 md:h-96 rounded-2xl overflow-hidden bg-gray-100">
+          <div id="modal-slider-container" class="w-full h-full flex transition-transform duration-500">
+            <!-- Dynamic Slides -->
+          </div>
+          <button onclick="slideModalImages(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full font-bold">❮</button>
+          <button onclick="slideModalImages(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full font-bold">❯</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div class="flex items-center gap-2">
+              <span id="modal-badge-type" class="bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold">GOAT</span>
+              <span id="modal-badge-status" class="bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full font-bold">AVAILABLE</span>
+            </div>
+            
+            <h1 id="modal-title" class="text-3xl font-extrabold dark:text-white">Breed Title</h1>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider" id="lbl-det-age">Age</p>
+                <p class="text-lg font-bold dark:text-white" id="modal-age">18 Months</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider" id="lbl-det-weight">Weight</p>
+                <p class="text-lg font-bold dark:text-white" id="modal-weight">45 KG</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider" id="lbl-det-district">District</p>
+                <p class="text-lg font-bold dark:text-white" id="modal-district">Mahbubnagar</p>
+              </div>
+              <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-wider" id="lbl-det-village">Village</p>
+                <p class="text-lg font-bold dark:text-white" id="modal-village">Jadcherla</p>
+              </div>
+            </div>
+
+            <div class="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-950">
+              <p class="text-xs text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider" id="lbl-det-price">Sale Price</p>
+              <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400" id="modal-offer-price">₹13,500</span>
+                <span class="text-sm line-through text-gray-400 font-medium" id="modal-original-price">₹15,000</span>
+                <span class="text-xs font-bold text-amber-500 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded" id="modal-discount-pct">10% OFF</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1" id="lbl-det-desc">Seller Notes</h4>
+              <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed" id="modal-description">Animal descriptions listing details...</p>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-4">
+              <div class="flex items-center gap-3">
+                <div class="bg-emerald-100 dark:bg-emerald-950 p-3 rounded-xl text-xl">👨‍🌾</div>
+                <div>
+                  <p class="text-xs text-gray-400 font-medium" id="lbl-det-seller">Listed by Seller</p>
+                  <h4 class="text-base font-bold dark:text-white" id="modal-seller-name">Ramu Kuruma</h4>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="grid grid-cols-2 gap-2">
+                <a href="#" id="modal-btn-call" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-center text-sm flex justify-center items-center gap-2">
+                  <span>📞</span> <span id="lbl-btn-call">Call Seller</span>
+                </a>
+                <a href="#" target="_blank" id="modal-btn-whatsapp" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-lg text-center text-sm flex justify-center items-center gap-2">
+                  <span>💬</span> WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <!-- Leaflet Maps Display -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest" id="lbl-det-loc">Seller Coordinates</h4>
+                <a href="#" target="_blank" id="modal-btn-gmaps" class="text-xs text-emerald-600 font-bold hover:underline">Google Maps Redirect ↗</a>
+              </div>
+              <div id="modal-map-container" class="h-48 rounded-2xl overflow-hidden border"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Footer -->
+  <footer class="bg-white dark:bg-gray-900 border-t mt-12 transition-colors py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🐐</span>
+        <span class="font-extrabold text-gray-900 dark:text-white" id="foot-brand">Goat & Sheep Market</span>
+      </div>
+      <p class="text-sm text-gray-400 text-center md:text-left" id="foot-copy">© 2026 Goat & Sheep Market. Direct farmer to consumer livestock trade. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+
+  <!-- Compatability Adapter Patch to map JavaScript "home" calls to HTML "home-section" -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof showSection === 'function') {
+        const originalShowSection = showSection;
+        showSection = function(sectionId) {
+          if (sectionId === 'home') {
+            sectionId = 'home-section';
+          }
+          originalShowSection(sectionId);
+        };
+        // Re-trigger showSection with the correct mapped target ID
+        showSection('home-section');
+      }
+    });
+  </script>
+</body>
+</html>

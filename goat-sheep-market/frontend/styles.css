@@ -1,0 +1,62 @@
+/* UI Animations and CSS Rules additions */
+:root {
+  --nav-height: 4rem;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark {
+  background-color: #0b0f19;
+  color: #f3f4f6;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+body.dark ::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+body.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loader-spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1 !important;
+}
+
+.toast-card {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

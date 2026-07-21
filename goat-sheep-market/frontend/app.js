@@ -3,7 +3,7 @@
  * Supporting English & Telugu with a dynamic mock database fallback mechanism.
  */
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL ="https://goat-sheep-market.onrender.com/api";
 
 let state = {
   language: "en",
